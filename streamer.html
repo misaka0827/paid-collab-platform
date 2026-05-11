@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>主播工作台 · 小红书派单平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { xhs: { DEFAULT:'#FF2442', light:'#FF6B81', dark:'#D91A37', bg:'#FFF5F5' } } } }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .modal-mask { background: rgba(0,0,0,.45); }
+  </style>
+</head>
+<body class="bg-xhs-bg min-h-screen">
+
+  <!-- Lookup Screen -->
+  <div id="lookupScreen" class="min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm mx-4">
+      <h1 class="text-xl font-bold text-center text-gray-800 mb-2">主播工作台</h1>
+      <p class="text-sm text-gray-400 text-center mb-6">输入你报名时使用的昵称查看任务</p>
+      <input id="lookupName" type="text" placeholder="你的昵称"
+             class="w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-xhs"
+             value="">
+      <button onclick="doLookup()" class="w-full bg-xhs text-white rounded-xl py-3 font-semibold hover:bg-xhs-dark transition">查看我的任务</button>
+      <p id="lookupErr" class="text-red-500 text-sm text-center mt-2 hidden">未找到该昵称的报名记录</p>
+      <div class="flex justify-center gap-4 mt-6">
+        <a href="creator.html" class="text-sm text-gray-400 hover:text-xhs">← 去接新任务</a>
+        <button onclick="clearStreamerIdentity()" class="text-sm text-gray-400 hover:text-xhs">切换身份</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <nav class="bg-white shadow-sm sticky top-0 z-40">
+      <div class="max-w-2xl mx-auto px-4 flex items-center justify-between h-14">
+        <a href="index.html" class="text-xhs font-bold text-lg">小红书派单</a>
+        <div class="flex items-center gap-3">
+          <span class="text-xs bg-red-50 text-xhs px-2 py-1 rounded-full">主播</span>
+          <span id="currentName" class="text-sm text-gray-600"></span>
+          <button onclick="backToLookup()" class="text-xs text-gray-400 hover:text-xhs">切换</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-2xl mx-auto px-4 py-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">我的任务</h2>
+        <a href="creator.html" class="text-sm text-xhs hover:underline">去接新任务 →</a>
+      </div>
+      <div id="myTasks" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- Script Modal -->
+  <div id="scriptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <h3 class="text-lg font-bold mb-4">提交创作脚本</h3>
+      <input type="hidden" id="sm_signupId">
+      <div id="sm_feedback_area" class="hidden mb-4">
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <p class="text-sm font-semibold text-orange-700">运营反馈意见：</p>
+          <p id="sm_feedback_text" class="text-sm text-orange-600 mt-1"></p>
+        </div>
+      </div>
+      <textarea id="sm_content" rows="8" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="在此输入你的创作脚本内容..."></textarea>
+      <div class="flex gap-3 mt-4">
+        <button onclick="closeScriptModal()" class="flex-1 border rounded-xl py-2 text-gray-600 hover:bg-gray-50">取消</button>
+        <button onclick="submitScript()" class="flex-1 bg-xhs text-white rounded-xl py-2 hover:bg-xhs-dark transition">提交脚本</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Work Modal -->
+  <div id="workModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4">
+      <h3 class="text-lg font-bold mb-4">提交最终作品</h3>
+      <input type="hidden" id="wm_signupId">
+      <div class="space-y-3">
+        <div>
+          <label class="text-sm text-gray-600">直播截图链接</label>
+          <input id="wm_screenshot" class="w-full border rounded-lg px-3 py-2 mt-1 text-sm" placeholder="粘贴截图链接">
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">直播链接</label>
+          <input id="wm_live" class="w-full border rounded-lg px-3 py-2 mt-1 text-sm" placeholder="粘贴直播链接">
+        </div>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button onclick="closeWorkModal()" class="flex-1 border rounded-xl py-2 text-gray-600 hover:bg-gray-50">取消</button>
+        <button onclick="submitWork()" class="flex-1 bg-xhs text-white rounded-xl py-2 hover:bg-xhs-dark transition">提交作品</button>
+      </div>
+    </div>
+  </div>
+
+<script src="api.js"></script>
+<script>
+var _creatorName = localStorage.getItem('xhs_streamer_name') || '';
+
+function clearStreamerIdentity() {
+  localStorage.removeItem('xhs_creator_identity');
+  window.location.href = 'creator.html';
+}
+
+if (_creatorName) {
+  document.getElementById('lookupName').value = _creatorName;
+}
+
+function doLookup() {
+  var name = document.getElementById('lookupName').value.trim();
+  if (!name) return;
+  loadDB().then(function() {
+    var found = cachedDB.signups.filter(function(s) {
+      return s.creatorName === name && s.creatorType === 'streamer';
+    });
+    if (found.length === 0) {
+      document.getElementById('lookupErr').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('lookupErr').classList.add('hidden');
+    _creatorName = name;
+    localStorage.setItem('xhs_streamer_name', name);
+    showDashboard();
+  });
+}
+
+function backToLookup() {
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('lookupScreen').classList.remove('hidden');
+}
+
+function showDashboard() {
+  document.getElementById('lookupScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('currentName').textContent = _creatorName;
+  renderMyTasks();
+  startSync(function(){ renderMyTasks(); });
+}
+
+document.getElementById('lookupName').addEventListener('keydown', function(e){ if(e.key==='Enter') doLookup(); });
+
+function renderMyTasks() {
+  var signups = cachedDB.signups.filter(function(s){
+    return s.creatorName === _creatorName && s.creatorType === 'streamer';
+  });
+  var el = document.getElementById('myTasks');
+  if (!signups.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无已报名的任务</p>'; return; }
+
+  el.innerHTML = signups.map(function(s){
+    var task = cachedDB.tasks.find(function(t){ return t.id === s.taskId; });
+    var script = cachedDB.scripts.find(function(sc){ return sc.signupId === s.id; });
+    var work = cachedDB.works.find(function(w){ return w.signupId === s.id; });
+
+    var statusLabel = '';
+    var actionBtn = '';
+
+    if (s.status === 'pending') {
+      statusLabel = '<span class="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full">等待审核</span>';
+    } else if (s.status === 'rejected') {
+      statusLabel = '<span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">报名被拒绝</span>';
+    } else if (s.status === 'approved') {
+      // Approved: check script status
+      if (!script) {
+        statusLabel = '<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">待提交脚本</span>';
+        actionBtn = '<button onclick="openScriptModal(\''+s.id+'\')" class="text-sm bg-xhs text-white px-3 py-1.5 rounded-lg hover:bg-xhs-dark">提交脚本</button>';
+      } else if (script.status === 'pending') {
+        statusLabel = '<span class="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full">脚本审核中</span>';
+      } else if (script.status === 'revision') {
+        statusLabel = '<span class="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">脚本需修改</span>';
+        actionBtn = '<button onclick="openScriptModal(\''+s.id+'\')" class="text-sm bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600">修改脚本</button>';
+      } else if (script.status === 'approved') {
+        if (!work) {
+          statusLabel = '<span class="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">脚本已通过 · 待提交作品</span>';
+          actionBtn = '<button onclick="openWorkModal(\''+s.id+'\')" class="text-sm bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600">提交作品</button>';
+        } else {
+          statusLabel = '<span class="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">已完成</span>';
+        }
+      }
+    }
+
+    var scriptSection = '';
+    if (script) {
+      scriptSection = '<div class="bg-gray-50 rounded-lg p-3 mt-3">' +
+        '<p class="text-xs text-gray-400 mb-1">我的脚本：</p>' +
+        '<p class="text-sm text-gray-700 whitespace-pre-wrap">' + script.content.substring(0,200) + (script.content.length>200?'...':'') + '</p>' +
+        (script.feedback ? '<div class="mt-2 bg-orange-50 rounded p-2"><p class="text-xs text-orange-700 font-semibold">修改意见：</p><p class="text-sm text-orange-600">' + script.feedback + '</p></div>' : '') +
+      '</div>';
+    }
+
+    var workSection = '';
+    if (work) {
+      workSection = '<div class="bg-green-50 rounded-lg p-3 mt-3">' +
+        '<p class="text-xs text-gray-400 mb-1">已提交作品：</p>' +
+        '<p class="text-sm text-gray-700">截图: <a href="'+work.screenshotUrl+'" target="_blank" class="text-blue-400 hover:underline">查看</a> | 直播: <a href="'+work.liveUrl+'" target="_blank" class="text-blue-400 hover:underline">查看</a></p>' +
+      '</div>';
+    }
+
+    return '<div class="bg-white rounded-xl shadow-sm p-5 border">' +
+      '<div class="flex justify-between items-center">' +
+        '<div>' +
+          '<h3 class="font-bold text-gray-800">' + (task?task.title:'已删除的任务') + '</h3>' +
+          '<div class="mt-1">' + statusLabel + '</div>' +
+        '</div>' +
+        '<div>' + actionBtn + '</div>' +
+      '</div>' +
+      scriptSection + workSection +
+    '</div>';
+  }).join('');
+}
+
+/* Script Modal */
+function openScriptModal(signupId) {
+  var script = cachedDB.scripts.find(function(sc){ return sc.signupId === signupId; });
+  document.getElementById('sm_signupId').value = signupId;
+  if (script && script.feedback) {
+    document.getElementById('sm_feedback_area').classList.remove('hidden');
+    document.getElementById('sm_feedback_text').textContent = script.feedback;
+    document.getElementById('sm_content').value = script.content;
+  } else {
+    document.getElementById('sm_feedback_area').classList.add('hidden');
+    document.getElementById('sm_content').value = script ? script.content : '';
+  }
+  document.getElementById('scriptModal').classList.remove('hidden');
+}
+function closeScriptModal() { document.getElementById('scriptModal').classList.add('hidden'); }
+
+async function submitScript() {
+  var signupId = document.getElementById('sm_signupId').value;
+  var content = document.getElementById('sm_content').value.trim();
+  if (!content) { alert('请输入脚本内容'); return; }
+
+  var db = cachedDB;
+  var existing = db.scripts.find(function(sc){ return sc.signupId === signupId; });
+  if (existing) {
+    // Save current to history
+    if (!existing.history) existing.history = [];
+    existing.history.push({
+      content: existing.content,
+      feedback: existing.feedback,
+      submittedAt: existing.submittedAt
+    });
+    existing.content = content;
+    existing.status = 'pending';
+    existing.feedback = '';
+    existing.submittedAt = new Date().toISOString();
+  } else {
+    db.scripts.push({
+      signupId: signupId,
+      content: content,
+      status: 'pending',
+      feedback: '',
+      submittedAt: new Date().toISOString(),
+      history: []
+    });
+  }
+  await saveDB(db);
+  closeScriptModal();
+  renderMyTasks();
+}
+
+/* Work Modal */
+function openWorkModal(signupId) {
+  document.getElementById('wm_signupId').value = signupId;
+  document.getElementById('wm_screenshot').value = '';
+  document.getElementById('wm_live').value = '';
+  document.getElementById('workModal').classList.remove('hidden');
+}
+function closeWorkModal() { document.getElementById('workModal').classList.add('hidden'); }
+
+async function submitWork() {
+  var signupId = document.getElementById('wm_signupId').value;
+  var screenshot = document.getElementById('wm_screenshot').value.trim();
+  var live = document.getElementById('wm_live').value.trim();
+  if (!screenshot || !live) { alert('请填写截图链接和直播链接'); return; }
+
+  var db = cachedDB;
+  db.works.push({
+    signupId: signupId,
+    type: 'streamer',
+    screenshotUrl: screenshot,
+    liveUrl: live,
+    noteUrl: '',
+    submittedAt: new Date().toISOString()
+  });
+  await saveDB(db);
+  closeWorkModal();
+  renderMyTasks();
+}
+</script>
+</body>
+</html>
