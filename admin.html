@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>运营后台 · 小红书派单平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { xhs: { DEFAULT:'#FF2442', light:'#FF6B81', dark:'#D91A37', bg:'#FFF5F5' } } } }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .modal-mask { background: rgba(0,0,0,.45); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Login Screen -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center bg-xhs-bg">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">运营后台登录</h1>
+    <input id="adminPwd" type="password" placeholder="请输入管理密码"
+           class="w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-xhs">
+    <button onclick="doLogin()" class="w-full bg-xhs text-white rounded-xl py-3 font-semibold hover:bg-xhs-dark transition">登 录</button>
+    <p id="loginErr" class="text-red-500 text-sm text-center mt-2 hidden">密码错误</p>
+  </div>
+</div>
+
+<!-- Main Admin Panel -->
+<div id="adminPanel" class="hidden">
+  <!-- Top Nav -->
+  <nav class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
+      <a href="index.html" class="text-xhs font-bold text-lg">小红书派单平台</a>
+      <div class="flex gap-1">
+        <button onclick="switchTab('tasks')" data-tab="tasks" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium">任务管理</button>
+        <button onclick="switchTab('signups')" data-tab="signups" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium">报名审核</button>
+        <button onclick="switchTab('scripts')" data-tab="scripts" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium">脚本审核</button>
+        <button onclick="switchTab('works')" data-tab="works" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium">作品查收</button>
+      </div>
+      <button onclick="exportData()" class="text-sm text-xhs hover:underline">导出 Excel</button>
+    </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- ===== Tab: Tasks ===== -->
+    <div id="tab-tasks" class="tab-content">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">任务管理</h2>
+        <button onclick="openTaskModal()" class="bg-xhs text-white px-4 py-2 rounded-xl text-sm hover:bg-xhs-dark transition">+ 创建任务</button>
+      </div>
+      <div id="taskList" class="grid gap-4"></div>
+    </div>
+
+    <!-- ===== Tab: Signups ===== -->
+    <div id="tab-signups" class="tab-content hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">报名审核</h2>
+      <div class="mb-3">
+        <select id="signupTaskFilter" onchange="renderSignups()" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="">全部任务</option>
+        </select>
+      </div>
+      <div id="signupList" class="space-y-3"></div>
+    </div>
+
+    <!-- ===== Tab: Scripts ===== -->
+    <div id="tab-scripts" class="tab-content hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">脚本审核</h2>
+      <div class="mb-3">
+        <select id="scriptTaskFilter" onchange="renderScripts()" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="">全部任务</option>
+        </select>
+      </div>
+      <div id="scriptList" class="space-y-3"></div>
+    </div>
+
+    <!-- ===== Tab: Works ===== -->
+    <div id="tab-works" class="tab-content hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">作品查收</h2>
+      <div id="workList" class="space-y-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div id="taskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <h3 id="taskModalTitle" class="text-lg font-bold mb-4">创建任务</h3>
+    <input type="hidden" id="editTaskId">
+    <div class="space-y-3">
+      <div>
+        <label class="text-sm text-gray-600">任务名称</label>
+        <input id="tf_title" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="输入任务名称">
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">任务密码（创作者需输入才能查看详情）</label>
+        <input id="tf_password" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="设置任务密码">
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">任务简介（解锁后可见）</label>
+        <textarea id="tf_brief" rows="4" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="详细的任务要求..."></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm text-gray-600">截止时间</label>
+          <input id="tf_deadline" type="date" class="w-full border rounded-lg px-3 py-2 mt-1">
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">名额上限</label>
+          <input id="tf_quota" type="number" min="1" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="10">
+        </div>
+      </div>
+      <div>
+        <label class="text-sm text-gray-600">接受创作者类型</label>
+        <div class="flex gap-4 mt-1">
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" id="tf_streamer" checked class="rounded text-xhs"> 主播
+          </label>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" id="tf_author" checked class="rounded text-xhs"> 作者
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeTaskModal()" class="flex-1 border rounded-xl py-2 text-gray-600 hover:bg-gray-50">取消</button>
+      <button onclick="saveTask()" class="flex-1 bg-xhs text-white rounded-xl py-2 hover:bg-xhs-dark transition">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Script Feedback Modal -->
+<div id="feedbackModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4">
+    <h3 class="text-lg font-bold mb-2">审核脚本</h3>
+    <input type="hidden" id="fb_signupId">
+    <div class="bg-gray-50 rounded-lg p-4 mb-4 max-h-60 overflow-y-auto">
+      <p id="fb_content" class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-sm text-gray-600">修改意见（留空则表示通过）</label>
+        <textarea id="fb_feedback" rows="3" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="如有修改意见请填写，留空即为通过"></textarea>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="closeFeedbackModal()" class="flex-1 border rounded-xl py-2 text-gray-600 hover:bg-gray-50">取消</button>
+      <button onclick="submitFeedback(true)" class="flex-1 bg-green-500 text-white rounded-xl py-2 hover:bg-green-600 transition">通过</button>
+      <button onclick="submitFeedback(false)" class="flex-1 bg-yellow-500 text-white rounded-xl py-2 hover:bg-yellow-600 transition">修改意见</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+const ADMIN_PASSWORD = 'admin2026';
+
+/* ---- Login ---- */
+function doLogin() {
+  if (document.getElementById('adminPwd').value === ADMIN_PASSWORD) {
+    localStorage.setItem('xhs_admin_logged', '1');
+    showAdmin();
+  } else {
+    document.getElementById('loginErr').classList.remove('hidden');
+  }
+}
+function showAdmin() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('adminPanel').classList.remove('hidden');
+  init();
+}
+if (localStorage.getItem('xhs_admin_logged') === '1') showAdmin();
+document.getElementById('adminPwd').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+/* ---- Tabs ---- */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.add('hidden'); });
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.classList.remove('bg-xhs', 'text-white');
+    btn.classList.add('text-gray-600');
+  });
+  var active = document.querySelector('[data-tab="'+name+'"]');
+  if (active) { active.classList.add('bg-xhs','text-white'); active.classList.remove('text-gray-600'); }
+}
+
+/* ---- Init ---- */
+async function init() {
+  switchTab('tasks');
+  await loadDB();
+  renderAll();
+  startSync(function(){ renderAll(); });
+}
+
+function renderAll() {
+  renderTasks();
+  renderSignups();
+  renderScripts();
+  renderWorks();
+  populateFilters();
+}
+
+/* ---- Helpers ---- */
+function genId(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function getTask(id) { return cachedDB.tasks.find(function(t){ return t.id === id; }); }
+function getSignup(id) { return cachedDB.signups.find(function(s){ return s.id === id; }); }
+
+function populateFilters() {
+  ['signupTaskFilter','scriptTaskFilter'].forEach(function(selId){
+    var sel = document.getElementById(selId);
+    var val = sel.value;
+    sel.innerHTML = '<option value="">全部任务</option>';
+    cachedDB.tasks.forEach(function(t){
+      sel.innerHTML += '<option value="'+t.id+'">' + t.title + '</option>';
+    });
+    sel.value = val;
+  });
+}
+
+/* ---- Tasks ---- */
+function renderTasks() {
+  var el = document.getElementById('taskList');
+  if (!cachedDB.tasks.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无任务</p>'; return; }
+  el.innerHTML = cachedDB.tasks.map(function(t){
+    var signupCount = cachedDB.signups.filter(function(s){ return s.taskId === t.id; }).length;
+    var approved = cachedDB.signups.filter(function(s){ return s.taskId === t.id && s.status === 'approved'; }).length;
+    var types = (t.creatorTypes||[]).map(function(ct){ return ct==='streamer'?'主播':'作者'; }).join(' / ');
+    return '<div class="bg-white rounded-xl shadow-sm p-5 border hover:shadow-md transition">' +
+      '<div class="flex justify-between items-start">' +
+        '<div>' +
+          '<h3 class="font-bold text-gray-800">' + t.title + '</h3>' +
+          '<p class="text-sm text-gray-400 mt-1">密码: ' + t.password + ' | 类型: ' + types + '</p>' +
+          '<p class="text-sm text-gray-500 mt-1">截止: ' + t.deadline + ' | 名额: ' + approved + '/' + t.quota + ' | 报名: ' + signupCount + '人</p>' +
+        '</div>' +
+        '<div class="flex gap-2">' +
+          '<button onclick="openTaskModal(\''+t.id+'\')" class="text-sm text-blue-500 hover:underline">编辑</button>' +
+          '<button onclick="deleteTask(\''+t.id+'\')" class="text-sm text-red-400 hover:underline">删除</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="text-sm text-gray-600 mt-3 whitespace-pre-wrap">' + (t.brief||'').substring(0,100) + (t.brief && t.brief.length>100?'...':'') + '</p>' +
+    '</div>';
+  }).join('');
+}
+
+function openTaskModal(id) {
+  document.getElementById('taskModalTitle').textContent = id ? '编辑任务' : '创建任务';
+  document.getElementById('editTaskId').value = id || '';
+  if (id) {
+    var t = getTask(id);
+    document.getElementById('tf_title').value = t.title;
+    document.getElementById('tf_password').value = t.password;
+    document.getElementById('tf_brief').value = t.brief;
+    document.getElementById('tf_deadline').value = t.deadline;
+    document.getElementById('tf_quota').value = t.quota;
+    document.getElementById('tf_streamer').checked = (t.creatorTypes||[]).indexOf('streamer') >= 0;
+    document.getElementById('tf_author').checked = (t.creatorTypes||[]).indexOf('author') >= 0;
+  } else {
+    ['tf_title','tf_password','tf_brief','tf_deadline','tf_quota'].forEach(function(fid){
+      var el = document.getElementById(fid);
+      if (el.type==='checkbox') el.checked = true; else el.value = '';
+    });
+    document.getElementById('tf_streamer').checked = true;
+    document.getElementById('tf_author').checked = true;
+  }
+  document.getElementById('taskModal').classList.remove('hidden');
+}
+function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+
+async function saveTask() {
+  var id = document.getElementById('editTaskId').value;
+  var types = [];
+  if (document.getElementById('tf_streamer').checked) types.push('streamer');
+  if (document.getElementById('tf_author').checked) types.push('author');
+  var data = {
+    title: document.getElementById('tf_title').value.trim(),
+    password: document.getElementById('tf_password').value.trim(),
+    brief: document.getElementById('tf_brief').value.trim(),
+    deadline: document.getElementById('tf_deadline').value,
+    quota: parseInt(document.getElementById('tf_quota').value) || 10,
+    creatorTypes: types,
+    status: 'active'
+  };
+  if (!data.title || !data.password) { alert('请填写任务名称和密码'); return; }
+
+  var db = cachedDB;
+  if (id) {
+    db.tasks = db.tasks.map(function(t){ return t.id === id ? Object.assign(t, data) : t; });
+  } else {
+    data.id = genId('task');
+    db.tasks.push(data);
+  }
+  await saveDB(db);
+  closeTaskModal();
+  renderAll();
+}
+
+async function deleteTask(id) {
+  if (!confirm('确定要删除该任务？')) return;
+  var db = cachedDB;
+  db.tasks = db.tasks.filter(function(t){ return t.id !== id; });
+  await saveDB(db);
+  renderAll();
+}
+
+/* ---- Signups ---- */
+function renderSignups() {
+  var filter = document.getElementById('signupTaskFilter').value;
+  var list = cachedDB.signups;
+  if (filter) list = list.filter(function(s){ return s.taskId === filter; });
+
+  var el = document.getElementById('signupList');
+  if (!list.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无报名</p>'; return; }
+
+  el.innerHTML = list.map(function(s){
+    var task = getTask(s.taskId);
+    var statusMap = { pending:'待审核', approved:'已通过', rejected:'已拒绝' };
+    var statusColor = { pending:'text-yellow-600 bg-yellow-50', approved:'text-green-600 bg-green-50', rejected:'text-red-500 bg-red-50' };
+    var typeLabel = s.creatorType === 'streamer' ? '主播' : '作者';
+    var btns = s.status === 'pending' ?
+      '<button onclick="reviewSignup(\''+s.id+'\',true)" class="text-sm bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600">通过</button>' +
+      '<button onclick="reviewSignup(\''+s.id+'\',false)" class="text-sm bg-red-400 text-white px-3 py-1 rounded-lg hover:bg-red-500 ml-2">拒绝</button>'
+      : '';
+    return '<div class="bg-white rounded-xl p-4 shadow-sm border flex justify-between items-center">' +
+      '<div>' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="font-semibold text-gray-800">' + s.creatorName + '</span>' +
+          '<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">' + typeLabel + '</span>' +
+          '<span class="text-xs px-2 py-0.5 rounded-full ' + (statusColor[s.status]||'') + '">' + (statusMap[s.status]||s.status) + '</span>' +
+        '</div>' +
+        '<p class="text-sm text-gray-400 mt-1">任务: ' + (task?task.title:'已删除') + ' | 主页: <a href="'+s.profile+'" target="_blank" class="text-blue-400 hover:underline">'+s.profile+'</a> | 粉丝: ' + s.fans + '</p>' +
+        '<p class="text-xs text-gray-300 mt-0.5">报名时间: ' + new Date(s.appliedAt).toLocaleString() + '</p>' +
+      '</div>' +
+      '<div>' + btns + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function reviewSignup(id, approve) {
+  var db = cachedDB;
+  db.signups = db.signups.map(function(s){
+    if (s.id === id) s.status = approve ? 'approved' : 'rejected';
+    return s;
+  });
+  await saveDB(db);
+  renderAll();
+}
+
+/* ---- Scripts ---- */
+function renderScripts() {
+  var filter = document.getElementById('scriptTaskFilter').value;
+  var list = cachedDB.scripts;
+  if (filter) {
+    var signupIds = cachedDB.signups.filter(function(s){ return s.taskId === filter; }).map(function(s){ return s.id; });
+    list = list.filter(function(sc){ return signupIds.indexOf(sc.signupId) >= 0; });
+  }
+
+  var el = document.getElementById('scriptList');
+  if (!list.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无脚本</p>'; return; }
+
+  el.innerHTML = list.map(function(sc){
+    var signup = getSignup(sc.signupId);
+    var task = signup ? getTask(signup.taskId) : null;
+    var statusMap = { pending:'待审核', approved:'已通过', revision:'需修改' };
+    var statusColor = { pending:'text-yellow-600 bg-yellow-50', approved:'text-green-600 bg-green-50', revision:'text-orange-600 bg-orange-50' };
+    var btn = sc.status !== 'approved' ?
+      '<button onclick="openFeedbackModal(\''+sc.signupId+'\')" class="text-sm bg-xhs text-white px-3 py-1 rounded-lg hover:bg-xhs-dark">审核</button>' : '';
+    return '<div class="bg-white rounded-xl p-4 shadow-sm border">' +
+      '<div class="flex justify-between items-start">' +
+        '<div>' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="font-semibold text-gray-800">' + (signup?signup.creatorName:'未知') + '</span>' +
+            '<span class="text-xs px-2 py-0.5 rounded-full ' + (statusColor[sc.status]||'') + '">' + (statusMap[sc.status]||sc.status) + '</span>' +
+          '</div>' +
+          '<p class="text-sm text-gray-400 mt-1">任务: ' + (task?task.title:'已删除') + '</p>' +
+        '</div>' +
+        '<div>' + btn + '</div>' +
+      '</div>' +
+      '<div class="bg-gray-50 rounded-lg p-3 mt-3 text-sm text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto">' + sc.content + '</div>' +
+      (sc.feedback ? '<div class="mt-2 text-sm text-orange-600"><strong>上次意见：</strong>' + sc.feedback + '</div>' : '') +
+      (sc.history && sc.history.length ? '<p class="text-xs text-gray-300 mt-1">历史提交: ' + sc.history.length + ' 次</p>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function openFeedbackModal(signupId) {
+  var sc = cachedDB.scripts.find(function(s){ return s.signupId === signupId; });
+  if (!sc) return;
+  document.getElementById('fb_signupId').value = signupId;
+  document.getElementById('fb_content').textContent = sc.content;
+  document.getElementById('fb_feedback').value = '';
+  document.getElementById('feedbackModal').classList.remove('hidden');
+}
+function closeFeedbackModal() { document.getElementById('feedbackModal').classList.add('hidden'); }
+
+async function submitFeedback(isApprove) {
+  var signupId = document.getElementById('fb_signupId').value;
+  var feedback = document.getElementById('fb_feedback').value.trim();
+  var db = cachedDB;
+  db.scripts = db.scripts.map(function(sc){
+    if (sc.signupId === signupId) {
+      if (isApprove) {
+        sc.status = 'approved';
+        sc.feedback = '';
+      } else {
+        if (!feedback) { alert('请填写修改意见'); return sc; }
+        sc.status = 'revision';
+        sc.feedback = feedback;
+      }
+    }
+    return sc;
+  });
+  await saveDB(db);
+  closeFeedbackModal();
+  renderAll();
+}
+
+/* ---- Works ---- */
+function renderWorks() {
+  var el = document.getElementById('workList');
+  if (!cachedDB.works.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无作品</p>'; return; }
+
+  el.innerHTML = cachedDB.works.map(function(w){
+    var signup = getSignup(w.signupId);
+    var task = signup ? getTask(signup.taskId) : null;
+    var typeLabel = w.type === 'streamer' ? '主播' : '作者';
+    var links = '';
+    if (w.type === 'streamer') {
+      links = '<p class="text-sm text-gray-600 mt-2">直播截图: <a href="'+w.screenshotUrl+'" target="_blank" class="text-blue-400 hover:underline">查看</a> | 直播链接: <a href="'+w.liveUrl+'" target="_blank" class="text-blue-400 hover:underline">查看</a></p>';
+    } else {
+      links = '<p class="text-sm text-gray-600 mt-2">笔记链接: <a href="'+w.noteUrl+'" target="_blank" class="text-blue-400 hover:underline">查看</a></p>';
+    }
+    return '<div class="bg-white rounded-xl p-4 shadow-sm border">' +
+      '<div class="flex items-center gap-2">' +
+        '<span class="font-semibold text-gray-800">' + (signup?signup.creatorName:'未知') + '</span>' +
+        '<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">' + typeLabel + '</span>' +
+      '</div>' +
+      '<p class="text-sm text-gray-400 mt-1">任务: ' + (task?task.title:'已删除') + '</p>' +
+      links +
+      '<p class="text-xs text-gray-300 mt-1">提交时间: ' + new Date(w.submittedAt).toLocaleString() + '</p>' +
+    '</div>';
+  }).join('');
+}
+
+/* ---- Export ---- */
+function exportData() {
+  var rows = [['任务名称','创作者昵称','身份','主页链接','粉丝数','报名状态','脚本状态','脚本反馈','作品-截图链接','作品-直播链接','作品-笔记链接','报名时间']];
+  cachedDB.signups.forEach(function(s){
+    var task = getTask(s.taskId);
+    var script = cachedDB.scripts.find(function(sc){ return sc.signupId === s.id; });
+    var work = cachedDB.works.find(function(w){ return w.signupId === s.id; });
+    var statusMap = { pending:'待审核', approved:'已通过', rejected:'已拒绝', revision:'需修改' };
+    rows.push([
+      task ? task.title : '已删除',
+      s.creatorName,
+      s.creatorType === 'streamer' ? '主播' : '作者',
+      s.profile,
+      s.fans,
+      statusMap[s.status] || s.status,
+      script ? (statusMap[script.status] || script.status) : '未提交',
+      script ? (script.feedback || '') : '',
+      work ? (work.screenshotUrl || '') : '',
+      work ? (work.liveUrl || '') : '',
+      work ? (work.noteUrl || '') : '',
+      new Date(s.appliedAt).toLocaleString()
+    ]);
+  });
+  var csv = '\uFEFF' + rows.map(function(r){ return r.map(function(c){ return '"' + String(c).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '派单数据_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
