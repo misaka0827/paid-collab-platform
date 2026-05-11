@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书 · 官方派单平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            xhs: { DEFAULT: '#FF2442', light: '#FF6B81', dark: '#D91A37', bg: '#FFF5F5' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  </style>
+</head>
+<body class="bg-xhs-bg min-h-screen flex items-center justify-center">
+  <div class="text-center px-6">
+    <!-- Logo -->
+    <div class="mb-8">
+      <div class="inline-flex items-center justify-center w-20 h-20 bg-xhs rounded-2xl shadow-lg mb-4">
+        <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">小红书 · 官方派单平台</h1>
+      <p class="text-gray-500 text-sm">付费约稿任务发布 & 创作者接单</p>
+    </div>
+
+    <!-- Entry Cards -->
+    <div class="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">
+      <!-- Creator Entry -->
+      <a href="creator.html"
+         class="flex-1 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-8 group border border-transparent hover:border-xhs">
+        <div class="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-xhs transition-colors">
+          <svg class="w-7 h-7 text-xhs group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">创作者入口</h2>
+        <p class="text-sm text-gray-400">接单 · 创作 · 提交作品</p>
+      </a>
+
+      <!-- Admin Entry -->
+      <a href="admin.html"
+         class="flex-1 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-8 group border border-transparent hover:border-xhs">
+        <div class="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-xhs transition-colors">
+          <svg class="w-7 h-7 text-xhs group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">运营后台</h2>
+        <p class="text-sm text-gray-400">发布任务 · 审核管理</p>
+      </a>
+    </div>
+
+    <p class="mt-10 text-xs text-gray-300">&copy; 2026 小红书官方派单平台</p>
+  </div>
+</body>
+</html>
