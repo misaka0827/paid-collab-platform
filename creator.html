@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>创作者入口 · 小红书派单平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { xhs: { DEFAULT:'#FF2442', light:'#FF6B81', dark:'#D91A37', bg:'#FFF5F5' } } } }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .modal-mask { background: rgba(0,0,0,.45); }
+  </style>
+</head>
+<body class="bg-xhs-bg min-h-screen">
+
+<!-- Identity Selection -->
+<div id="identityScreen" class="min-h-screen flex items-center justify-center">
+  <div class="text-center px-6">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-xhs rounded-2xl shadow-lg mb-6">
+      <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+    </div>
+    <h1 class="text-2xl font-bold text-gray-800 mb-2">选择你的身份</h1>
+    <p class="text-gray-400 text-sm mb-8">身份信息会被记住，下次自动跳转</p>
+    <div class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+      <button onclick="selectIdentity('streamer')"
+              class="flex-1 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all p-8 border-2 border-transparent hover:border-xhs group">
+        <div class="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-xhs transition-colors">
+          <svg class="w-7 h-7 text-xhs group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h2 class="font-bold text-gray-800">我是主播</h2>
+        <p class="text-xs text-gray-400 mt-1">直播带货 · 截图+链接</p>
+      </button>
+      <button onclick="selectIdentity('author')"
+              class="flex-1 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all p-8 border-2 border-transparent hover:border-xhs group">
+        <div class="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-xhs transition-colors">
+          <svg class="w-7 h-7 text-xhs group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </div>
+        <h2 class="font-bold text-gray-800">我是作者</h2>
+        <p class="text-xs text-gray-400 mt-1">图文笔记 · 提交笔记链接</p>
+      </button>
+    </div>
+    <a href="index.html" class="inline-block mt-8 text-sm text-gray-400 hover:text-xhs">← 返回首页</a>
+  </div>
+</div>
+
+<!-- Task List -->
+<div id="taskListScreen" class="hidden">
+  <nav class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-2xl mx-auto px-4 flex items-center justify-between h-14">
+      <a href="index.html" class="text-xhs font-bold text-lg">小红书派单</a>
+      <div class="flex items-center gap-3">
+        <span id="identityBadge" class="text-xs bg-red-50 text-xhs px-2 py-1 rounded-full"></span>
+        <button onclick="clearIdentity()" class="text-xs text-gray-400 hover:text-xhs">切换身份</button>
+      </div>
+    </div>
+  </nav>
+  <div class="max-w-2xl mx-auto px-4 py-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">可接任务</h2>
+    <div id="taskCards" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- Password Modal -->
+<div id="pwdModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+    <h3 class="text-lg font-bold mb-2">输入任务密码</h3>
+    <p class="text-sm text-gray-400 mb-4">请向运营获取该任务的访问密码</p>
+    <input type="hidden" id="pwd_taskId">
+    <input id="pwd_input" type="password" placeholder="任务密码"
+           class="w-full border rounded-xl px-4 py-3 mb-2 focus:outline-none focus:ring-2 focus:ring-xhs">
+    <p id="pwd_err" class="text-red-500 text-sm hidden mb-2">密码错误，请重试</p>
+    <div class="flex gap-3">
+      <button onclick="closePwdModal()" class="flex-1 border rounded-xl py-2 text-gray-600 hover:bg-gray-50">取消</button>
+      <button onclick="verifyPassword()" class="flex-1 bg-xhs text-white rounded-xl py-2 hover:bg-xhs-dark transition">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Detail Modal -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-mask">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <h3 id="detail_title" class="text-lg font-bold mb-2"></h3>
+    <div class="space-y-2 mb-4">
+      <p class="text-sm text-gray-400"><span id="detail_deadline"></span> · 名额 <span id="detail_quota"></span></p>
+      <div id="detail_brief" class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap"></div>
+    </div>
+    <input type="hidden" id="detail_taskId">
+    <div id="signupForm" class="space-y-3 border-t pt-4">
+      <h4 class="font-semibold text-gray-700">报名信息</h4>
+      <input id="sf_name" placeholder="你的昵称" class="w-full border rounded-lg px-3 py-2 text-sm">
+      <input id="sf_profile" placeholder="主页链接" class="w-full border rounded-lg px-3 py-2 text-sm">
+      <input id="sf_fans" placeholder="粉丝数" class="w-full border rounded-lg px-3 py-2 text-sm">
+      <button onclick="submitSignup()" class="w-full bg-xhs text-white rounded-xl py-2.5 font-semibold hover:bg-xhs-dark transition">立即报名</button>
+    </div>
+    <div id="signupDone" class="hidden text-center py-4">
+      <p class="text-green-600 font-semibold">报名成功！请等待运营审核</p>
+    </div>
+    <button onclick="closeDetailModal()" class="w-full mt-4 border rounded-xl py-2 text-gray-500 hover:bg-gray-50">关闭</button>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+var currentIdentity = localStorage.getItem('xhs_creator_identity');
+
+// Auto-redirect if identity is already set
+if (currentIdentity === 'streamer') {
+  window.location.href = 'streamer.html';
+} else if (currentIdentity === 'author') {
+  window.location.href = 'author.html';
+}
+
+function selectIdentity(type) {
+  localStorage.setItem('xhs_creator_identity', type);
+  window.location.href = type === 'streamer' ? 'streamer.html' : 'author.html';
+}
+
+function clearIdentity() {
+  localStorage.removeItem('xhs_creator_identity');
+  document.getElementById('taskListScreen').classList.add('hidden');
+  document.getElementById('identityScreen').classList.remove('hidden');
+}
+
+// If identity exists but hasn't redirected (fallback), show task list
+function showTaskList() {
+  document.getElementById('identityScreen').classList.add('hidden');
+  document.getElementById('taskListScreen').classList.remove('hidden');
+  document.getElementById('identityBadge').textContent = currentIdentity === 'streamer' ? '主播' : '作者';
+  loadAndRender();
+}
+
+async function loadAndRender() {
+  await loadDB();
+  renderTaskCards();
+  startSync(function(){ renderTaskCards(); });
+}
+
+function renderTaskCards() {
+  var el = document.getElementById('taskCards');
+  var tasks = cachedDB.tasks.filter(function(t){
+    return t.status === 'active' && (t.creatorTypes||[]).indexOf(currentIdentity) >= 0;
+  });
+  if (!tasks.length) { el.innerHTML = '<p class="text-gray-400 text-center py-8">暂无可接任务</p>'; return; }
+
+  el.innerHTML = tasks.map(function(t){
+    var signupCount = cachedDB.signups.filter(function(s){ return s.taskId === t.id && s.status === 'approved'; }).length;
+    var full = signupCount >= t.quota;
+    var expired = new Date(t.deadline) < new Date();
+    var tag = full ? '<span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">已满</span>' :
+              expired ? '<span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">已截止</span>' :
+              '<span class="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">可报名</span>';
+    return '<div class="bg-white rounded-xl shadow-sm p-5 border hover:shadow-md transition cursor-pointer" onclick="openPwdModal(\''+t.id+'\')">' +
+      '<div class="flex justify-between items-center">' +
+        '<h3 class="font-bold text-gray-800">' + t.title + '</h3>' +
+        tag +
+      '</div>' +
+      '<p class="text-sm text-gray-400 mt-2">截止: ' + t.deadline + ' | 名额: ' + signupCount + '/' + t.quota + '</p>' +
+      '<p class="text-xs text-xhs mt-2">点击输入密码查看详情 →</p>' +
+    '</div>';
+  }).join('');
+}
+
+/* Password verification */
+var _unlockedTasks = {};
+
+function openPwdModal(taskId) {
+  if (_unlockedTasks[taskId]) { showDetail(taskId); return; }
+  document.getElementById('pwd_taskId').value = taskId;
+  document.getElementById('pwd_input').value = '';
+  document.getElementById('pwd_err').classList.add('hidden');
+  document.getElementById('pwdModal').classList.remove('hidden');
+}
+function closePwdModal() { document.getElementById('pwdModal').classList.add('hidden'); }
+
+function verifyPassword() {
+  var taskId = document.getElementById('pwd_taskId').value;
+  var pwd = document.getElementById('pwd_input').value.trim();
+  var task = cachedDB.tasks.find(function(t){ return t.id === taskId; });
+  if (task && task.password === pwd) {
+    _unlockedTasks[taskId] = true;
+    closePwdModal();
+    showDetail(taskId);
+  } else {
+    document.getElementById('pwd_err').classList.remove('hidden');
+  }
+}
+document.getElementById('pwd_input').addEventListener('keydown', function(e){ if(e.key==='Enter') verifyPassword(); });
+
+/* Task detail & signup */
+function showDetail(taskId) {
+  var task = cachedDB.tasks.find(function(t){ return t.id === taskId; });
+  if (!task) return;
+  document.getElementById('detail_title').textContent = task.title;
+  document.getElementById('detail_deadline').textContent = '截止: ' + task.deadline;
+  var approvedCount = cachedDB.signups.filter(function(s){ return s.taskId === taskId && s.status === 'approved'; }).length;
+  document.getElementById('detail_quota').textContent = approvedCount + '/' + task.quota;
+  document.getElementById('detail_brief').textContent = task.brief;
+  document.getElementById('detail_taskId').value = taskId;
+
+  // Check if already signed up
+  var myName = localStorage.getItem('xhs_creator_name_' + taskId);
+  if (myName) {
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('signupDone').classList.remove('hidden');
+  } else {
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('signupDone').classList.add('hidden');
+  }
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+async function submitSignup() {
+  var taskId = document.getElementById('detail_taskId').value;
+  var name = document.getElementById('sf_name').value.trim();
+  var profile = document.getElementById('sf_profile').value.trim();
+  var fans = document.getElementById('sf_fans').value.trim();
+  if (!name || !profile) { alert('请填写昵称和主页链接'); return; }
+
+  var signup = {
+    id: 'signup_' + Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+    taskId: taskId,
+    creatorName: name,
+    creatorType: currentIdentity,
+    profile: profile,
+    fans: fans,
+    status: 'pending',
+    appliedAt: new Date().toISOString()
+  };
+  var db = cachedDB;
+  db.signups.push(signup);
+  await saveDB(db);
+
+  localStorage.setItem('xhs_creator_name_' + taskId, name);
+  localStorage.setItem('xhs_signup_id_' + taskId, signup.id);
+
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('signupDone').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
